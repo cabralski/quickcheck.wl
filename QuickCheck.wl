@@ -1,7 +1,7 @@
 (* ::Package:: *)
 
 (* ::Title:: *)
-(*QuickCheck.wl \[LongDash] 0.1.0*)
+(*QuickCheck.wl \[LongDash] 0.1.2*)
 
 
 (* ::Author:: *)
@@ -13,6 +13,10 @@
 
 
 BeginPackage["QuickCheck`"];
+
+
+Unprotect[Evaluate[Context[] <> "*"]];
+ClearAll[Evaluate[Context[] <> "*"]];
 
 
 (* ::Subtitle:: *)
@@ -39,36 +43,46 @@ QuickCheck::notcmp = "The property \"``\" could not yield a boolean result on \"
 (*Types*)
 
 
-\[CapitalTau]Any::usage = "";
+QuickCheckTypes::usage = "List of all QuickCheck types that can be used on assumptions.";
 
 
-\[CapitalTau]PlainText::usage = "";
-\[CapitalTau]ASCII::usage = "";
-\[CapitalTau]UTF8::usage = "";
+\[CapitalTau]Type::usage = "Represents a generic QuickCheck type."
 
 
-\[CapitalTau]Boolean::usage = "";
+\[CapitalTau]Any::usage = "The generic \"any\" \[CapitalTau]Type, can be a plain text, boolean, integer, decimal, or complex.";
 
 
-\[CapitalTau]PositiveInteger::usage = "";
-\[CapitalTau]Integer::usage = "";
-\[CapitalTau]NegativeInteger::usage = "";
+\[CapitalTau]PlainText::usage = "String composed of characters from A to Z, a to z, and spaces with size \"MinMaxStringSize\".";
+\[CapitalTau]ASCII::usage = "String with characters from the interval ranging from 0 to 127 with size \"MinMaxStringSize\".";
+\[CapitalTau]UTF8::usage = "String with all possible UTF-8 character on existence (0 to 1 112 064) with size \"MinMaxStringSize\".";
 
 
-\[CapitalTau]PositiveDecimal::usage = "";
-\[CapitalTau]Decimal::usage = "";
-\[CapitalTau]NegativeDecimal::usage = "";
+\[CapitalTau]Boolean::usage = "Boolean, True or False.";
 
 
-\[CapitalTau]Rule::usage = "";
+\[CapitalTau]PositiveInteger::usage = "Any integer from 0 to 2^\"ExponentRange\".";
+\[CapitalTau]Integer::usage = "Any integer from -2^\"ExponentRange\" to 2^\"ExponentRange\".";
+\[CapitalTau]NegativeInteger::usage = "Any integer from -2^\"ExponentRange\" to -1.";
 
 
-\[CapitalTau]List::usage = "";
-\[CapitalTau]NonEmptyList::usage = "";
-\[CapitalTau]MissingList::usage = "";
+\[CapitalTau]PositiveDecimal::usage = "Any decimal from 0.0 to 2.0^\"ExponentRange\".";
+\[CapitalTau]Decimal::usage = "Any decimal from -2.0^\"ExponentRange\" to 2.0^\"ExponentRange\".";
+\[CapitalTau]NegativeDecimal::usage = "Any decimal from -2.0^\"ExponentRange\" to -$MinMachineNumber.";
 
 
-\[CapitalTau]Association::usage = "";
+\[CapitalTau]ComplexInteger::usage = "Any complex from -2^\"ExponentRange\" to 2^\"ExponentRange\" with an arbitrary imaginary part.";
+\[CapitalTau]ComplexDecimal::usage = "Any complex from -2.0^\"ExponentRange\" to 2.0^\"ExponentRange\" with an arbitrary imaginary part.";
+
+
+\[CapitalTau]Rule::usage = "\[CapitalTau]Rule[\[CapitalTau]Type, \[CapitalTau]Type] maps an arbitrary \[CapitalTau]Type to another arbitrary \[CapitalTau]Type.";
+
+
+\[CapitalTau]List::usage = "\[CapitalTau]List[\[CapitalTau]Type] creates an arbitrarily long list with size \"MinMaxListSize\".";
+\[CapitalTau]NonEmptyList::usage = "\[CapitalTau]NonEmptyList[\[CapitalTau]Type] creates an arbitrarily non-empty long list with size \"MinMaxListSize\".";
+\[CapitalTau]MissingList::usage = "\[CapitalTau]MissingList[\[CapitalTau]Type] creates an arbitrarily long list with Missing[...] values with size \"MinMaxListSize\".";
+
+
+\[CapitalTau]Association::usage = "\[CapitalTau]Association[\[CapitalTau]Type, \[CapitalTau]Type] creates an arbitrarily long association that has rules that map from \[CapitalTau]Type to \[CapitalTau]Type.";
 
 
 (* ::Subtitle:: *)
@@ -97,10 +111,44 @@ ComparableQ[any_] := MemberQ[{Integer, Real, String, Complex, List}, Head[any]]
 (*Constant Global Variables*)
 
 
+QuickCheckTypes = Sort @ {
+
+	\[CapitalTau]Any,
+	
+	\[CapitalTau]PlainText,
+	\[CapitalTau]ASCII,
+	\[CapitalTau]UTF8,
+	
+	\[CapitalTau]Boolean,
+	
+	\[CapitalTau]PositiveInteger,
+	\[CapitalTau]Integer,
+	\[CapitalTau]NegativeInteger,
+	
+	\[CapitalTau]PositiveDecimal,
+	\[CapitalTau]Decimal,
+	\[CapitalTau]NegativeDecimal,
+	
+	\[CapitalTau]ComplexInteger,
+	\[CapitalTau]ComplexDecimal,
+	
+	\[CapitalTau]Rule,
+	\[CapitalTau]Association,
+	
+	\[CapitalTau]List,
+	\[CapitalTau]NonEmptyList,
+	\[CapitalTau]MissingList
+	
+};
+
+
+\[CapitalTau]Type = Alternatives @@ QuickCheckTypes;
+
+
 PlainChars = Join[CharacterRange[65, 90], CharacterRange[97, 122], {" ", " ", " ", " ", " "}];
 
 
-UTF8Chars = CharacterRange[0, 65536];
+UTF8Chars = CharacterRange[0, 1112064];
 
 
 ASCIIChars = CharacterRange[0, 127];
@@ -251,6 +299,9 @@ QuickCheck[
 			\[CapitalTau]Decimal :> RandomChoice[{0.0, RandomReal[{-2.0^erange, 2.0^erange}]}],
 			\[CapitalTau]NegativeDecimal :> RandomChoice[{$MinMachineNumber, RandomReal[{-2.0^erange, $MinMachineNumber}]}],
 			
+			\[CapitalTau]ComplexInteger :> RandomChoice[{0 + \[CapitalTau]Integer * I, \[CapitalTau]Integer + (\[CapitalTau]Integer * I)}],
+			\[CapitalTau]ComplexDecimal :> RandomChoice[{0.0 + \[CapitalTau]Decimal * I, \[CapitalTau]Decimal + (\[CapitalTau]Decimal * I)}],
+			
 			\[CapitalTau]Rule[type_, type_] :> type -> type,
 			\[CapitalTau]Rule[type_] :> "PlainText" -> type,
 			
@@ -272,9 +323,11 @@ QuickCheck[
 		If[computedvalue,
 				
 			(* If the property passes, okay! *)
+			(*
 			If[Mod[run, 100] == 0,
 				PrintTemporary[StringForm["Passed `` times..", run]];
 			];
+			*)
 			Continue[],
 				
 			(* If it fails.. *)
@@ -316,7 +369,15 @@ QuickCheck[
 QuickCheck[args___] := Message[QuickCheck::invargs];
 
 
-(* SetAttributes[QuickCheck, {Protected, ReadProtected}]; *)
+Protect[Evaluate[Context[] <> "*"]];
+
+
+(* ::Subtitle:: *)
+(**)
+
+
+(* The great seal of protection! *)
+Protect[Evaluate[Context[] <> "*"]];
 
 
 (* ::Subtitle:: *)
